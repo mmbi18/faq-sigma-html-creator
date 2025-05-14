@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>فرم سوالات و جواب‌ها</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            position: relative;
+        }
+        #loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            text-align: center;
+        }
+        #loading h1 {
+            font-size: 24px;
+            color: #007BFF;
+        }
+        #loading p {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #555;
+        }
+        .container {
+            width: 90%;
+            max-width: 800px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            display: none; /* Initially hidden */
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .step-card {
+            background: #f9f9f9;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        input[type="text"], textarea {
+            width: calc(100% - 12px); /* Adjust width to account for padding */
+            height: 40px;
+            margin-top: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            padding: 5px;
+            font-size: 16px;
+        }
+        textarea {
+            height: 150px;
+        }
+        button {
+            margin-top: 10px;
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #218838;
+        }
+        .accordion {
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+        .accordion-header {
+            padding: 10px;
+            cursor: pointer;
+            background: #007BFF;
+            color: white;
+            transition: background 0.3s;
+        }
+        .accordion-header:hover {
+            background: #0056b3;
+        }
+        .accordion-content {
+            display: none;
+            padding: 10px;
+            background: #f9f9f9;
+        }
+        .code-container {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e9ecef;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .date-list {
+            margin-top: 20px;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+        }
+        .date-item {
+            margin: 5px 0;
+            padding: 5px;
+            background: #f1f1f1;
+            border-radius: 3px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+<div id="loading">
+    <h1>t-ma.ir</h1>
+    <p>کپی بدون اعلام منبع پیگرد قانونی دارد.</p>
+</div>
+
+<div class="container" id="appContainer">
+    <h2>فرم سوالات و جواب‌ها</h2>
+    
+    <div id="inputGroups"></div>
+    <div class="step-card">
+        <button id="addInputButton">اضافه کردن سوال جدید</button>
+        <button id="submitButton">ذخیره سوالات و جواب‌ها</button>
+        <button id="clearDataButton">حذف تمام داده‌ها</button>
+        <button id="copyCssButton">کپی کردن CSS</button>
+        <button id="copyJsonLdButton">کپی کردن JSON-LD</button>
+    </div>
+
+    <div id="accordionContainer"></div>
+    <div class="code-container">
+        <h3>کد HTML و JavaScript:</h3>
+        <textarea id="codeOutput" readonly></textarea>
+    </div>
+    <div class="code-container">
+        <h3>کد JSON-LD:</h3>
+        <textarea id="jsonLdOutput" readonly></textarea>
+    </div>
+
+    <div class="date-list" id="dateListContainer">
+        <h3>تاریخ‌های ایجاد سوالات</h3>
+        <div id="dateList"></div>
+    </div>
+
+    <div class="footer">
+        ایجاد شده توسط محمد باقری <a href="http://t-ma.ir" target="_blank">t-ma.ir</a>
+    </div>
+</div>
+
+<script>
+    let inputCount = 0;
+    let questionsAndAnswers = JSON.parse(localStorage.getItem('questionsAndAnswers')) || [];
+
+    // بارگذاری سوالات و جواب‌ها از localStorage
+    function loadQuestions() {
+        questionsAndAnswers.forEach((item) => {
+            inputCount++;
+            addInputField(item.question, item.answer);
+        });
+        updateDateList(); // بروزرسانی لیست تاریخ‌ها
+    }
+
+    // نمایش لودینگ
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('appContainer').style.display = 'block';
+            loadQuestions(); // بارگذاری سوالات
+        }, 2000); // مدت زمان لودینگ (۲ ثانیه)
+    });
+
+    document.getElementById('addInputButton').addEventListener('click', () => {
+        inputCount++;
+        addInputField('', ''); // امکان اضافه کردن سوال جدید
+    });
+
+    function addInputField(question = '', answer = '') {
+        const inputGroup = document.createElement('div');
+        inputGroup.classList.add('input-group');
+        inputGroup.innerHTML = `
+            <div>
+                <input type="text" id="question${inputCount}" placeholder="سوال را وارد کنید" value="${question}" />
+                <textarea id="answer${inputCount}" placeholder="جواب را وارد کنید">${answer}</textarea>
+                <button onclick="removeInputField(this)">حذف</button>
+            </div>
+        `;
+        document.getElementById('inputGroups').appendChild(inputGroup);
+    }
+
+    function removeInputField(button) {
+        const inputGroup = button.parentElement;
+        inputGroup.remove();
+        inputCount--;
+    }
+
+    document.getElementById('submitButton').addEventListener('click', () => {
+        let htmlCode = '';
+        let jsonLd = {
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": []
+        };
+
+        // بارگذاری سوالات و جواب‌ها از localStorage
+        questionsAndAnswers = JSON.parse(localStorage.getItem('questionsAndAnswers')) || [];
+        const newQuestionsAndAnswers = []; // آرایه جدید برای سوالات و جواب‌های معتبر
+
+        // جمع‌آوری سوالات و جواب‌ها
+        for (let i = 1; i <= inputCount; i++) {
+            const question = document.getElementById(`question${i}`).value.trim();
+            const answer = document.getElementById(`answer${i}`).value.trim();
+
+            if (question && answer) { // اطمینان از اینکه سوال و جواب خالی نباشند
+                const timestamp = new Date().toLocaleString(); // زمان ایجاد
+                newQuestionsAndAnswers.push({ question, answer, timestamp }); // ذخیره سوال و جواب جدید
+
+                const accordion = document.createElement('div');
+                accordion.classList.add('accordion');
+
+                const header = document.createElement('div');
+                header.classList.add('accordion-header');
+                header.textContent = question;
+
+                const content = document.createElement('div');
+                content.classList.add('accordion-content');
+                content.innerHTML = `<p>${answer}</p>`;
+
+                accordion.appendChild(header);
+                accordion.appendChild(content);
+                document.getElementById('accordionContainer').appendChild(accordion);
+
+                header.addEventListener('click', () => {
+                    const isVisible = content.style.display === 'block';
+                    content.style.display = isVisible ? 'none' : 'block';
+                });
+
+                // Generate HTML code with comments
+                htmlCode += `<!-- سوال ${i} -->\n<div class="accordion">\n    <div class="accordion-header">${question}</div>\n    <div class="accordion-content"><p>${answer}</p></div>\n</div>\n<!-- پایان سوال ${i} -->\n`;
+
+                // Add to JSON-LD
+                jsonLd.mainEntity.push({
+                    "@type": "Question",
+                    "name": question,
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": answer
+                    }
+                });
+            }
+        }
+
+        // Display the generated code in the textareas
+        document.getElementById('codeOutput').value = htmlCode;
+        document.getElementById('jsonLdOutput').value = JSON.stringify(jsonLd, null, 2);
+        
+        // ذخیره سوالات و جواب‌ها در localStorage
+        localStorage.setItem('questionsAndAnswers', JSON.stringify(newQuestionsAndAnswers));
+
+        // Reset input fields
+        inputCount = 0;
+        document.getElementById('inputGroups').innerHTML = '';
+        loadQuestions(); // بارگذاری مجدد سوالات
+
+        // بروزرسانی لیست تاریخ‌ها
+        updateDateList();
+    });
+
+    document.getElementById('clearDataButton').addEventListener('click', () => {
+        if (confirm('آیا مطمئن هستید که می‌خواهید تمام داده‌ها را پاک کنید؟')) {
+            localStorage.removeItem('questionsAndAnswers'); // حذف داده‌ها از localStorage
+            inputCount = 0;
+            document.getElementById('inputGroups').innerHTML = '';
+            document.getElementById('accordionContainer').innerHTML = '';
+            updateDateList(); // بروزرسانی لیست تاریخ‌ها
+        }
+    });
+
+    function updateDateList() {
+        const dateListContainer = document.getElementById('dateList');
+        dateListContainer.innerHTML = ''; // پاک کردن لیست قبلی
+        
+        questionsAndAnswers.forEach((item, index) => {
+            const dateItem = document.createElement('div');
+            dateItem.classList.add('date-item');
+            dateItem.innerHTML = `
+                <span>${item.timestamp} - ${item.question}</span>
+                <div>
+                    <button onclick="addItem(${index})">مورد</button>
+                    <button onclick="deleteItem(${index})">حذف</button>
+                </div>
+            `;
+            dateListContainer.appendChild(dateItem);
+        });
+    }
+
+    // توابع افزودن و حذف
+    window.addItem = function(index) {
+        const item = questionsAndAnswers[index];
+        addInputField(item.question, item.answer); // افزودن سوال و جواب به ورودی‌ها
+        document.getElementById('inputGroups').scrollIntoView({ behavior: 'smooth' }); // اسکرول به بالا
+    };
+
+    window.deleteItem = function(index) {
+        questionsAndAnswers.splice(index, 1); // حذف از آرایه
+        localStorage.setItem('questionsAndAnswers', JSON.stringify(questionsAndAnswers)); // بروزرسانی localStorage
+        updateDateList(); // بروزرسانی لیست تاریخ‌ها
+    };
+
+    document.getElementById('copyCssButton').addEventListener('click', () => {
+        const cssCode = `
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+                padding: 20px;
+                background-color: #f4f4f4;
+            }
+            .accordion {
+                background: #fff;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                margin-bottom: 10px;
+                overflow: hidden;
+            }
+            .accordion-header {
+                padding: 10px;
+                cursor: pointer;
+                background: #007BFF;
+                color: white;
+            }
+            .accordion-content {
+                display: none;
+                padding: 10px;
+                background: #f9f9f9;
+            }
+            button {
+                margin-top: 10px;
+                background: #28a745;
+                color: white;
+                border: none;
+                padding: 10px 15px;
+                border-radius: 5px;
+            }
+        `;
+        navigator.clipboard.writeText(cssCode).then(() => {
+            alert('CSS کپی شد!');
+        });
+    });
+
+    document.getElementById('copyJsonLdButton').addEventListener('click', () => {
+        const jsonLdCode = {
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": questionsAndAnswers.map(item => ({
+                "@type": "Question",
+                "name": item.question,
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": item.answer
+                }
+            }))
+        };
+        navigator.clipboard.writeText(JSON.stringify(jsonLdCode, null, 2)).then(() => {
+            alert('JSON-LD کپی شد!');
+        });
+    });
+</script>
+
+<script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            // اینجا سوالات و جواب‌ها به‌صورت JSON-LD قرار می‌گیرند
+            // به‌صورت خودکار از localStorage بارگذاری می‌شود
+        ]
+    }
+</script>
